@@ -1,4 +1,10 @@
 
+/*******************
+* This program creates a plot of 
+* total_services vs population and 
+* the prevalance of cancer in the population
+*******************/
+
 ODS RTF FILE="plots.rtf";
 
 

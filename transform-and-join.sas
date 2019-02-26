@@ -8,7 +8,6 @@
 * Delete the contents of the WORK library 
 * to start fresh 
 *----------------------------------------*/
-
 /* proc datasets library=WORK kill; run; quit; */
 
 /*************
@@ -171,15 +170,13 @@ set med2012 med2013 med2014 med2015 med2016;
 run;
 
 /*************
-* Summarize Medicare data by year, city, and state &
-* exclude OUTLIER cities
+* Summarize Medicare data by year, city, and state 
 *************/
 
 proc delete data=medSummary; run;
 proc summary data=medAll nway ;
   class year city state; 
   var total_medicare_payment_amt total_services;
-  *where provider_type eq 'Internal Medicine'; * -->  use this to filter by provider_type ... ;
   output out=medSummary sum=total_payment total_services;
 run;
 
@@ -222,14 +219,9 @@ quit;
 /*************
 * Create training and test data sets by
 * taking a randome sampling of 30% of the data
-* for the test data set
+* for the test data set & exclude OUTLIER cities
+* from both the training and test sets
 *************/
-
-proc sql noprint;
-select count(*) into :c from medCitiesCombined where year <> 2016;
-quit;
-%put &c;
-
 
 proc delete data=split project.training project.test; run;
 

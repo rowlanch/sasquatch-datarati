@@ -1,6 +1,12 @@
 libname project 'C:\sasquatch-data\lib';
 options mstored sasmstore=project;
 
+/******************************************
+* This macro calculates the Mean Absolute Error
+* and the Root Mean Square Error of a dataset
+* based on the parameters provided.
+*----------------------------------------*/
+
 %macro mae_rmse_sql(
         dataset /* Data set which contains the actual and predicted values */, 
         actual /* Variable which contains the actual or observed valued */, 

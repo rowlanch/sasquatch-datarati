@@ -1,3 +1,11 @@
+
+/*******************
+* This program explores the 500 Cities
+* and Medicare datasets to gain insight
+* into model estimation
+*******************/
+
+
 ods rtf file='measures.rtf';
 
 proc sql;

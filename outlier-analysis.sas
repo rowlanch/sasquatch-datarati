@@ -1,4 +1,12 @@
 
+/*******************
+* This program produces plots that analyze
+* the observations that are outliers and/or
+* exert leverage over the model.  Extreme
+* prejudice was used in the removal of outliers
+* so as to not overfit the model.
+*******************/
+
 *ods rtf file="outliers.rtf";
 ods graphics on;
 
