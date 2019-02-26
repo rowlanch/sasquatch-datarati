@@ -2,6 +2,8 @@
 ---
 This project was done for a course project in MKTG 708 Customer Relationship Management and Data Mining, a Business Analytics elective in the PMBA program of the Darla Moore School of Business at the University of South Carolina.  The team for this project was:  Robert Mashburn, Richard Klemm, Clay Rowland, James (Brent) Varitz, and Mark Sarver.
 
+The source code can be found on [GitHub](https://github.com/rowlanch/sasquatch-datarati).
+
 ---
 ## Introduction 
 Hospitals and medical service providers have a need to project future service volumes and revenues for financial and operational planning.  For many of these organizations, Medicare patients make up a large percentage of their customer base.  If they can accurately predict Medicare patient volumes, they can make decisions on staffing, capital expenditure, organizational finance-mix, and inform investor relations reports.
