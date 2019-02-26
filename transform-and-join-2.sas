@@ -1,27 +1,22 @@
+/******************************************
+* This program will clean, transform, and join
+* datasets from Medicare and 500 Cities to prepare
+* the raw data for model estimation.
+*----------------------------------------*/
+
+/*---------------------------------------*
+* Delete the contents of the WORK library 
+* to start fresh 
+*----------------------------------------*/
 
 /* proc datasets library=WORK kill; run; quit; */
 
-/*
-
-TODO: need to clean up city names:
-
-BOISE CITY -> BOISE
-SAN BUENAVENTURA (VENTURA) -> VENTURA
-proc sql;
-select distinct city, state from med2014Summary where city like 'BOISE%' or city like '%VENTURA%';
-*select count(distinct cityname) from project.cities2016 where year = 2014;
-*select city, state from cities2014 c
-where not exists (
-	select city, state
-	from med2014Summary m
-	where c.city = m.city and c.state = m.state
-);
-quit;
-
-*/
-
 /*************
 * Create 500 Cities dataset with 2014 data
+* Cleaning and transformation steps:
+*  - Only include data records for the Age Adjusted Prevalence values
+*  - Rename state and city variables to align with Medicare variable names
+*  - Change state and city variables to UPPER CASE to align with Medicare variable names
 *************/
 
 proc delete data=cities; run;
@@ -31,19 +26,14 @@ data cities;
 		rename=(stateabbr=state cityname=city)
 		where=(DataValueTypeID='AgeAdjPrv' and year=2014)
 	);
-	*project.cities2018(
-		keep = year stateabbr cityname populationCount measureid DataValueTypeID data_value 
-		rename=(stateabbr=state cityname=city populationCount=population2010)
-		where=(DataValueTypeID='AgeAdjPrv')
-	);
 	state=upcase(state);
 	city=upcase(city);
 run;
 
-/* proc sql; select distinct year from cities; */
-
 /*************
-* Pivot measures from rows to columns
+* Pivot measures key-value pairs from rows to columns
+* to prepare measure values as independent variables
+* in the model.
 *************/
 proc sort data=cities; by year city state;
 proc transpose data=cities out=cities(drop=_name_);
@@ -52,15 +42,16 @@ proc transpose data=cities out=cities(drop=_name_);
 	id measureid;
 run;
 
-/*
-proc sql noprint;
-select count(*) into :count from (
-select distinct city, state from cities
-);
-quit;
-%put &count;
-*/
 
+/*************
+* Prepare Medicare 2012 data set
+* Cleaning and transformation steps:
+*  - Change data type of total_services and total_medicare_payment_amt from character to numeric
+*  - Exclude variables that are not pertinent to the model
+*  - Keep only city, state, provider_type, total_services, total_medicare_payment_amt
+*  - Set lengths of variables to standardize across Medicare data sets
+*  - Create year variable
+*************/
 proc delete data=medicareAgg2012;
 data medicareAgg2012;
 set project.MedicareAgg2012;
@@ -80,6 +71,16 @@ data med2012;
 	year=2012;
 
 run;
+
+/*************
+* Prepare Medicare 2013 data set
+* Cleaning and transformation steps:
+*  - Change data type of total_services and total_medicare_payment_amt from character to numeric
+*  - Exclude variables that are not pertinent to the model
+*  - Keep only city, state, provider_type, total_services, total_medicare_payment_amt
+*  - Set lengths of variables to standardize across Medicare data sets
+*  - Create year variable
+*************/
 
 proc delete data=medicareAgg2013;
 data medicareAgg2013;
@@ -102,6 +103,14 @@ data med2013;
 
 run;
 
+/*************
+* Prepare Medicare 2014 data set
+* Cleaning and transformation steps:
+*  - Exclude variables that are not pertinent to the model
+*  - Keep only city, state, provider_type, total_services, total_medicare_payment_amt
+*  - Set lengths of variables to standardize across Medicare data sets
+*  - Create year variable
+*************/
 
 proc delete data=med2014; run;
 data med2014;
@@ -113,6 +122,15 @@ data med2014;
 	year=2014;
 run;
 
+/*************
+* Prepare Medicare 2015 data set
+* Cleaning and transformation steps:
+*  - Exclude variables that are not pertinent to the model
+*  - Keep only city, state, provider_type, total_services, total_medicare_payment_amt
+*  - Set lengths of variables to standardize across Medicare data sets
+*  - Create year variable
+*************/
+
 proc delete data=med2015; run;
 data med2015;
 	length city $ 50 state $ 2 provider_type $ 55 total_services 8 total_medicare_payment_amt 8 year 8;
@@ -122,6 +140,15 @@ data med2015;
 	);
 	year=2015;
 run;
+
+/*************
+* Prepare Medicare 2016 data set
+* Cleaning and transformation steps:
+*  - Exclude variables that are not pertinent to the model
+*  - Keep only city, state, provider_type, total_services, total_medicare_payment_amt
+*  - Set lengths of variables to standardize across Medicare data sets
+*  - Create year variable
+*************/
 
 proc delete data=med2016; run;
 data med2016;
@@ -133,13 +160,19 @@ data med2016;
 	year=2016;
 run;
 
+
+/*************
+* Combine all 5 years of Medicare data
+*************/
+
 proc delete data=medAll;
 data medAll;
 set med2012 med2013 med2014 med2015 med2016;
 run;
 
 /*************
-* Summarize Medicare data by year, city, and state
+* Summarize Medicare data by year, city, and state &
+* exclude OUTLIER cities
 *************/
 
 proc delete data=medSummary; run;
@@ -147,11 +180,6 @@ proc summary data=medAll nway ;
   class year city state; 
   var total_medicare_payment_amt total_services;
   *where provider_type eq 'Internal Medicine'; * -->  use this to filter by provider_type ... ;
-  where (city not in (
-	'NEW YORK', 'TAMPA', 'BIRMINGHAM', 'LOS ANGELES', 'BALTIMORE', 'CHICAGO', 'HONOLULU', 
-	'DETROIT', 'O''FALLON','GREENSBORO','SAN DIEGO', 'PHOENIX', 'SAN JOSE', 'NEW ORLEANS'
-	'SAN DIEGO'
-  ));
   output out=medSummary sum=total_payment total_services;
 run;
 
@@ -181,29 +209,6 @@ by city state;
 if inmed and incities; * keep only matched records;
 run;
 
-proc delete data=split training test; run;
-
-proc surveyselect 
-	data=medCitiesCombined
-	out=split samprate=.2 outall;
-run;
-
-data training test;
-set split;
-if selected = 1 then
-output test;
-else output training;
-run;
-
-
-
-
-
-/*
-proc print data=training(obs=100);
-run;
-*/
-
 /*
 * Verify data after joining ... ;
 proc sql;
@@ -212,9 +217,39 @@ select * from cities where city = 'ANTIOCH' and state = 'CA';
 select * from medSummary where city = 'ANTIOCH' and state = 'CA';
 quit;
 */
-/*
+
+
+/*************
+* Create training and test data sets by
+* taking a randome sampling of 30% of the data
+* for the test data set
+*************/
+
 proc sql noprint;
-select count(*) into :count from training;
+select count(*) into :c from medCitiesCombined where year <> 2016;
 quit;
-%put &count;
-*/
+%put &c;
+
+
+proc delete data=split project.training project.test; run;
+
+proc surveyselect noprint
+	data=medCitiesCombined(
+		where=(city not in (
+			'NEW YORK', 'TAMPA', 'BIRMINGHAM', 'LOS ANGELES', 'BALTIMORE', 'CHICAGO', 'HONOLULU', 
+			'DETROIT', 'O''FALLON','GREENSBORO','SAN DIEGO', 'PHOENIX', 'SAN JOSE', 'NEW ORLEANS'
+			'SAN DIEGO'
+	)))
+	out=split samprate=.2 outall;
+run;
+
+data project.training project.test;
+set split;
+if selected = 1 then
+output project.test;
+else output project.training;
+run;
+
+
+
+
